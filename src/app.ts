@@ -53,7 +53,7 @@ function drawPlot(data: DataFrame[]): void {
         bottom: 30,
         left: 40,
         right: 20
-    }
+    };
 
     let plotGroup: selectionSVG = svg.append<SVGGElement>("g")
         .classed("plot", true)
@@ -98,15 +98,42 @@ function drawPlot(data: DataFrame[]): void {
 
     let zScale: d3.ScaleOrdinal<string, string> = d3.scaleOrdinal(d3.schemeCategory10);
 
+    svg.append("defs").append("clipPath")
+        .attr("id", "clip")
+        .append("rect")
+        .attr("width", plotWidth)
+        .attr("height", plotHeight);
+
+    let focus = svg.append("g")
+        .attr("class", "focus")
+        .attr("translate", `translate(${plotMargins.left},${plotMargins.top})`);
+
+    let context = svg.append("g")
+        .attr("class", "context")
+        .attr("transform", `translate(${plotMargins2.left},${plotMargins2.top})`);
+
+    let brush: d3.BrushBehavior<{}> = d3.brushX()
+        .extent([[0, 0], [plotWidth, plotHeight2]])
+        .on("brush end", function(): void {
+            if(d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") {
+                return; // ignore brush-by-zoom
+            }
+            let s: any = d3.event.selection || x2Scale.range();
+            xScale.domain(s.map(x2Scale.invert, x2Scale));
+            focus.selectAll("path.line").attr("d", (type, d: any) => d.values);
+            focus.select<SVGGElement>(".x.axis").call(xAxis);
+            focus.select<SVGGElement>(".y.axis").call(yAxis);
+        });
+
     let pressure1: d3.Line<[number, number]> = d3.line()
         .curve(d3.curveBasis)
         .x(d => xScale(d[0]))
         .y(d => yScale(d[1]));
 
     let pressure2: d3.Line<[number, number]> = d3.line()
-    .curve(d3.curveBasis)
-    .x(d => x2Scale(d[0]))
-    .y(d => y2Scale(d[1]));
+        .curve(d3.curveBasis)
+        .x(d => x2Scale(d[0]))
+        .y(d => y2Scale(d[1]));
 
     let flow1: d3.Line<[number, number]> = d3.line()
         .curve(d3.curveBasis)
@@ -146,12 +173,6 @@ function drawPlot(data: DataFrame[]): void {
             .style("stroke", d => zScale(d.id))
             .style("fill", "transparent");
     });
-}
-
-function brushed(): void {
-    if(d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") {
-        return; // ignore brush-by-zoom
-    }
 }
 
 function readData(text: File, hasHeader: boolean): void {
