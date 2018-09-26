@@ -21,7 +21,15 @@
     <p class="browserupgrade">You are using an <strong>outdated</strong> browser. Please <a href="https://browsehappy.com/">upgrade your browser</a> to improve your experience and security.</p>
   <![endif]-->
 
-  <input type="file" name="csv", id="fileInput">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <a class="navbar-brand" href="#">Well Explorer</a>
+    <form class="form-inline my-2 my-lg-0 offset-lg-10">
+        <div class="form-group">
+          <label for="fileInput" class="btn btn-primary btn-block btn-outlined">Load PDG Data</label>
+          <input type="file" name="csv" id="fileInput" class="form-control-file mr-sm-2" style="display: none">
+        </div>
+      </form>
+  </nav>
 
   <script src="dist/bundle.js"></script>
 </body>

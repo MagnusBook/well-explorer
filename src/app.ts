@@ -1,6 +1,8 @@
 import d3 = require("d3");
 import papa = require("papaparse");
 import { Axis } from "d3";
+import "bootstrap";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 type selection = d3.Selection<d3.BaseType, {}, HTMLElement, any>;
 type selectionSVG = d3.Selection<SVGGElement, {}, HTMLElement, any>;
@@ -73,7 +75,7 @@ function drawPlot(data: DataFrame[]): void {
         .attr("transform", `translate(${0},${plotHeight})`)
         .call(xAxis);
 
-    let x2Scale: d3.ScaleLinear<number, number> = d3.scaleLinear()
+    /* let x2Scale: d3.ScaleLinear<number, number> = d3.scaleLinear()
         .range([0, width])
         .domain(xScale.domain());
     let x2Axis: linearAxis = d3.axisBottom(x2Scale);
@@ -81,7 +83,7 @@ function drawPlot(data: DataFrame[]): void {
         .classed("x2", true)
         .classed("axis", true)
         .attr("transform", `translate(${0},${plotHeight2})`)
-        .call(x2Axis);
+        .call(x2Axis); */
 
     let yScale: d3.ScaleLinear<number, number> = d3.scaleLinear()
         .range([plotHeight, 0])
@@ -112,7 +114,7 @@ function drawPlot(data: DataFrame[]): void {
         .attr("class", "context")
         .attr("transform", `translate(${plotMargins2.left},${plotMargins2.top})`);
 
-    let brush: d3.BrushBehavior<{}> = d3.brushX()
+    /* let brush: d3.BrushBehavior<{}> = d3.brushX()
         .extent([[0, 0], [plotWidth, plotHeight2]])
         .on("brush end", function(): void {
             if(d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") {
@@ -123,27 +125,27 @@ function drawPlot(data: DataFrame[]): void {
             focus.selectAll("path.line").attr("d", (type, d: any) => d.values);
             focus.select<SVGGElement>(".x.axis").call(xAxis);
             focus.select<SVGGElement>(".y.axis").call(yAxis);
-        });
+        }); */
 
     let pressure1: d3.Line<[number, number]> = d3.line()
         .curve(d3.curveBasis)
         .x(d => xScale(d[0]))
         .y(d => yScale(d[1]));
 
-    let pressure2: d3.Line<[number, number]> = d3.line()
+/*     let pressure2: d3.Line<[number, number]> = d3.line()
         .curve(d3.curveBasis)
         .x(d => x2Scale(d[0]))
-        .y(d => y2Scale(d[1]));
+        .y(d => y2Scale(d[1])); */
 
     let flow1: d3.Line<[number, number]> = d3.line()
         .curve(d3.curveBasis)
         .x(d => xScale(d[0]))
         .y(d => yScale(d[1]));
 
-    let flow2: d3.Line<[number, number]> = d3.line()
+    /* let flow2: d3.Line<[number, number]> = d3.line()
         .curve(d3.curveBasis)
         .x(d => x2Scale(d[0]))
-        .y(d => y2Scale(d[1]));
+        .y(d => y2Scale(d[1])); */
 
     const lines: d3.Line<[number, number]>[] = [pressure1, flow1];
 
