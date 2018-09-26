@@ -1,14 +1,14 @@
 import d3 = require("d3");
 import papa = require("papaparse");
 import { Axis } from "d3";
-import "bootstrap";
+import $ = require("jquery");
 import "bootstrap/dist/css/bootstrap.min.css";
 
 type selection = d3.Selection<d3.BaseType, {}, HTMLElement, any>;
 type selectionSVG = d3.Selection<SVGGElement, {}, HTMLElement, any>;
-type margins = {top: number, bottom: number, left: number, right: number};
-type linearAxis = Axis<number | { valueOf(): number; } >;
-type plotData = {id: string, values: [number, number][]};
+type margins = { top: number, bottom: number, left: number, right: number };
+type linearAxis = Axis<number | { valueOf(): number; }>;
+type plotData = { id: string, values: [number, number][] };
 
 class DataFrame {
     time: number;
@@ -22,12 +22,15 @@ class DataFrame {
     }
 }
 
-window.onload = function(): void {
-    let fileInput: HTMLInputElement = <HTMLInputElement>document.getElementById("fileInput");
+const svg: selection = d3.select("svg");
+let aspect: number = <any>svg.attr("width") / <any>svg.attr("height");
 
-    fileInput.addEventListener("change", function(e: Event): void {
+window.onload = function (): void {
+    let fileInput: HTMLInputElement = <HTMLInputElement> document.getElementById("fileInput");
+
+    fileInput.addEventListener("change", function (e: Event): void {
         let file: File = fileInput.files[0];
-        if(file.name.split(".").slice(-1).pop() === "csv") {
+        if (file.name.split(".").slice(-1).pop() === "csv") {
             readData(file, false);
         } else {
             alert(`File type ${file.type} not supported!`);
@@ -35,15 +38,17 @@ window.onload = function(): void {
     });
 };
 
-const width: number = 960;
-const height: number = 500;
+
+
+$(window).on("resize", function (): void {
+        let chart: JQuery<HTMLElement> = $("#chart");
+        let container: JQuery<HTMLElement> = chart.parent();
+        let targetWidth: number = container.width();
+        chart.attr("width", targetWidth);
+        chart.attr("height", Math.round(targetWidth / aspect));
+    }).trigger("resize");
 
 function drawPlot(data: DataFrame[]): void {
-    let svg: selection = d3.select("body")
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height);
-
     let plotMargins: margins = {
         top: 20,
         bottom: 110,
@@ -60,6 +65,9 @@ function drawPlot(data: DataFrame[]): void {
     let plotGroup: selectionSVG = svg.append<SVGGElement>("g")
         .classed("plot", true)
         .attr("transform", `translate(${plotMargins.left},${plotMargins.top})`);
+
+    let width: number = <any>svg.attr("width");
+    let height : number = <any>svg.attr("height");
 
     let plotWidth: number = width - plotMargins.left - plotMargins.right;
     let plotHeight: number = height - plotMargins.top - plotMargins.bottom;
@@ -132,10 +140,10 @@ function drawPlot(data: DataFrame[]): void {
         .x(d => xScale(d[0]))
         .y(d => yScale(d[1]));
 
-/*     let pressure2: d3.Line<[number, number]> = d3.line()
-        .curve(d3.curveBasis)
-        .x(d => x2Scale(d[0]))
-        .y(d => y2Scale(d[1])); */
+    /*     let pressure2: d3.Line<[number, number]> = d3.line()
+            .curve(d3.curveBasis)
+            .x(d => x2Scale(d[0]))
+            .y(d => y2Scale(d[1])); */
 
     let flow1: d3.Line<[number, number]> = d3.line()
         .curve(d3.curveBasis)
@@ -149,8 +157,8 @@ function drawPlot(data: DataFrame[]): void {
 
     const lines: d3.Line<[number, number]>[] = [pressure1, flow1];
 
-    let timePressure: plotData = {id: "Pressure", values: []};
-    let timeFlow: plotData = {id: "Flow", values: []};
+    let timePressure: plotData = { id: "Pressure", values: [] };
+    let timeFlow: plotData = { id: "Flow", values: [] };
     for (let i: number = 0; i < data.length; i++) {
         const d: DataFrame = data[i];
         timePressure.values.push([d.time, d.pressure]);
@@ -182,12 +190,12 @@ function readData(text: File, hasHeader: boolean): void {
         worker: true,
         skipEmptyLines: true,
         header: hasHeader,
-        complete: function(results: papa.ParseResult, file: File): void {
+        complete: function (results: papa.ParseResult, file: File): void {
             let frames: DataFrame[];
-            if(!hasHeader) {
+            if (!hasHeader) {
                 frames = results.data.map(([time, flow, pressure]) => (new DataFrame(+time, +flow, +pressure)));
             } else {
-                frames = results.data.map(({time, flow, pressure}) => (new DataFrame(+time, +flow, +pressure)));
+                frames = results.data.map(({ time, flow, pressure }) => (new DataFrame(+time, +flow, +pressure)));
             }
             drawPlot(frames);
         }
