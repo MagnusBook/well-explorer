@@ -9,6 +9,7 @@ type selectionSVG = d3.Selection<SVGGElement, {}, HTMLElement, any>;
 type margins = { top: number, bottom: number, left: number, right: number };
 type linearAxis = Axis<number | { valueOf(): number; }>;
 type plotData = { id: string, values: [number, number][] };
+type plotSelection = d3.Selection<d3.BaseType, plotData, d3.BaseType, any>;
 
 class DataFrame {
     time: number;
@@ -22,8 +23,28 @@ class DataFrame {
     }
 }
 
+const plotMargins: margins = {
+    top: 10,
+    bottom: 100,
+    left: 40,
+    right: 10
+};
+const plotMargins2: margins = {
+    top: 430,
+    bottom: 40,
+    left: 40,
+    right: 10
+};
+
 const svg: selection = d3.select("svg");
-let aspect: number = <any>svg.attr("width") / <any>svg.attr("height");
+let aspect: number = <any> svg.attr("width") / <any> svg.attr("height");
+
+let width: number = <any> svg.attr("width");
+let height: number = <any> svg.attr("height");
+
+let plotWidth: number = width - plotMargins.left - plotMargins.right;
+let plotHeight: number = height - plotMargins.top - plotMargins.bottom;
+let plotHeight2: number = height - plotMargins2.top - plotMargins2.bottom;
 
 window.onload = function (): void {
     let fileInput: HTMLInputElement = <HTMLInputElement> document.getElementById("fileInput");
@@ -38,69 +59,32 @@ window.onload = function (): void {
     });
 };
 
-
-
-$(window).on("resize", function (): void {
-        let chart: JQuery<HTMLElement> = $("#chart");
-        let container: JQuery<HTMLElement> = chart.parent();
-        let targetWidth: number = container.width();
-        chart.attr("width", targetWidth);
-        chart.attr("height", Math.round(targetWidth / aspect));
-    }).trigger("resize");
+/* $(window).on("resize", function (): void {
+    let chart: JQuery<HTMLElement> = $("#chart");
+    let container: JQuery<HTMLElement> = chart.parent();
+    let targetWidth: number = container.width() - plotMargins.left - plotMargins.right;
+    chart.attr("width", targetWidth);
+    chart.attr("height", Math.round(targetWidth / aspect));
+}).trigger("resize"); */
 
 function drawPlot(data: DataFrame[]): void {
-    let plotMargins: margins = {
-        top: 20,
-        bottom: 110,
-        left: 40,
-        right: 20
-    };
-    let plotMargins2: margins = {
-        top: 430,
-        bottom: 30,
-        left: 40,
-        right: 20
-    };
-
     let plotGroup: selectionSVG = svg.append<SVGGElement>("g")
-        .classed("plot", true)
         .attr("transform", `translate(${plotMargins.left},${plotMargins.top})`);
-
-    let width: number = <any>svg.attr("width");
-    let height : number = <any>svg.attr("height");
-
-    let plotWidth: number = width - plotMargins.left - plotMargins.right;
-    let plotHeight: number = height - plotMargins.top - plotMargins.bottom;
-    let plotHeight2: number = height - plotMargins2.top - plotMargins2.bottom;
 
     let xScale: d3.ScaleLinear<number, number> = d3.scaleLinear()
         .range([0, width])
         .domain(d3.extent(data, d => d.time));
     let xAxis: linearAxis = d3.axisBottom(xScale);
-    let xAxisGroup: selectionSVG = plotGroup.append<SVGGElement>("g")
-        .classed("x", true)
-        .classed("axis", true)
-        .attr("transform", `translate(${0},${plotHeight})`)
-        .call(xAxis);
 
-    /* let x2Scale: d3.ScaleLinear<number, number> = d3.scaleLinear()
+    let x2Scale: d3.ScaleLinear<number, number> = d3.scaleLinear()
         .range([0, width])
         .domain(xScale.domain());
     let x2Axis: linearAxis = d3.axisBottom(x2Scale);
-    let x2AxisGroup: selectionSVG = plotGroup.append<SVGGElement>("g")
-        .classed("x2", true)
-        .classed("axis", true)
-        .attr("transform", `translate(${0},${plotHeight2})`)
-        .call(x2Axis); */
 
     let yScale: d3.ScaleLinear<number, number> = d3.scaleLinear()
         .range([plotHeight, 0])
         .domain([d3.min(data, d => d.flow), d3.max(data, d => d.pressure)]);
     let yAxis: linearAxis = d3.axisLeft(yScale);
-    let yAxisGroup: selectionSVG = plotGroup.append<SVGGElement>("g")
-        .classed("y", true)
-        .classed("axis", true)
-        .call(yAxis);
 
     let y2Scale: d3.ScaleLinear<number, number> = d3.scaleLinear()
         .range([plotHeight2, 0])
@@ -114,15 +98,15 @@ function drawPlot(data: DataFrame[]): void {
         .attr("width", plotWidth)
         .attr("height", plotHeight);
 
-    let focus = svg.append("g")
+    let focus: selection = plotGroup.append("g")
         .attr("class", "focus")
         .attr("translate", `translate(${plotMargins.left},${plotMargins.top})`);
 
-    let context = svg.append("g")
+    let context: selection = plotGroup.append("g")
         .attr("class", "context")
-        .attr("transform", `translate(${plotMargins2.left},${plotMargins2.top})`);
+        .attr("transform", `translate(0,${plotMargins2.top})`);
 
-    /* let brush: d3.BrushBehavior<{}> = d3.brushX()
+    let brush: d3.BrushBehavior<{}> = d3.brushX()
         .extent([[0, 0], [plotWidth, plotHeight2]])
         .on("brush end", function(): void {
             if(d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") {
@@ -133,29 +117,17 @@ function drawPlot(data: DataFrame[]): void {
             focus.selectAll("path.line").attr("d", (type, d: any) => d.values);
             focus.select<SVGGElement>(".x.axis").call(xAxis);
             focus.select<SVGGElement>(".y.axis").call(yAxis);
-        }); */
+        });
 
-    let pressure1: d3.Line<[number, number]> = d3.line()
+    let line1: d3.Line<[number, number]> = d3.line()
         .curve(d3.curveBasis)
         .x(d => xScale(d[0]))
         .y(d => yScale(d[1]));
 
-    /*     let pressure2: d3.Line<[number, number]> = d3.line()
-            .curve(d3.curveBasis)
-            .x(d => x2Scale(d[0]))
-            .y(d => y2Scale(d[1])); */
-
-    let flow1: d3.Line<[number, number]> = d3.line()
-        .curve(d3.curveBasis)
-        .x(d => xScale(d[0]))
-        .y(d => yScale(d[1]));
-
-    /* let flow2: d3.Line<[number, number]> = d3.line()
+    let line2: d3.Line<[number, number]> = d3.line()
         .curve(d3.curveBasis)
         .x(d => x2Scale(d[0]))
-        .y(d => y2Scale(d[1])); */
-
-    const lines: d3.Line<[number, number]>[] = [pressure1, flow1];
+        .y(d => y2Scale(d[1]));
 
     let timePressure: plotData = { id: "Pressure", values: [] };
     let timeFlow: plotData = { id: "Flow", values: [] };
@@ -169,25 +141,53 @@ function drawPlot(data: DataFrame[]): void {
 
     zScale.domain(collectedData.map(d => d.id.toString()));
 
-    let plot: d3.Selection<d3.BaseType, plotData, SVGGElement, any> = plotGroup.selectAll(".plot")
+    let focusLineGroups: plotSelection = focus.selectAll("g")
         .data(collectedData)
-        .enter().append("g")
-        .attr("class", "plot");
+        .enter().append("g");
 
-    plot.exit().remove();
+    let focusLines: plotSelection = focusLineGroups.append("path")
+        .attr("class", "line")
+        .attr("d", d => line1(d.values))
+        .style("stroke", d => zScale(d.id))
+        .style("fill", "transparent")
+        .attr("clip-path", "url(#clip)");
 
-    lines.forEach(line => {
-        plot.append("path")
-            .attr("class", "line")
-            .attr("d", d => line(d.values))
-            .style("stroke", d => zScale(d.id))
-            .style("fill", "transparent");
-    });
+    focus.append<SVGGElement>("g")
+        .attr("class", "x axis")
+        .attr("transform", `translate(0,${plotHeight})`)
+        .call(xAxis);
+
+    focus.append<SVGGElement>("g")
+        .attr("class", "y axis")
+        .call(yAxis);
+
+    let contextLineGroups: plotSelection = context.selectAll("g")
+        .data(collectedData)
+        .enter().append("g");
+
+    let contextLines: plotSelection = contextLineGroups.append("path")
+        .attr("class", "line")
+        .attr("d", d => line2(d.values))
+        .style("stroke", d => zScale(d.id))
+        .style("fill", "transparent")
+        .attr("clip-path", "url(#clip)");
+
+    context.append<SVGGElement>("g")
+        .attr("class", "x axis")
+        .attr("transform", `translate(0,${plotHeight2})`)
+        .call(x2Axis);
+
+    context.append<SVGGElement>("g")
+        .attr("class", "x brush")
+        .call(brush)
+        .selectAll("rect")
+        .attr("y", -6)
+        .attr("height", plotHeight2 + 7);
 }
 
 function readData(text: File, hasHeader: boolean): void {
     papa.parse(text, {
-        worker: true,
+        worker: papa.WORKERS_SUPPORTED,
         skipEmptyLines: true,
         header: hasHeader,
         complete: function (results: papa.ParseResult, file: File): void {
