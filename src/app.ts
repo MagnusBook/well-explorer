@@ -1,6 +1,6 @@
 import d3 = require("d3");
 import papa = require("papaparse");
-import { Axis, line } from "d3";
+import { Axis, line, ZoomBehavior } from "d3";
 import $ = require("jquery");
 import "bootstrap/dist/css/bootstrap.min.css";
 
@@ -92,6 +92,16 @@ function drawPlot(data: DataFrame[]): void {
 
     let zScale: d3.ScaleOrdinal<string, string> = d3.scaleOrdinal(d3.schemeCategory10);
 
+    let brush: d3.BrushBehavior<{}> = d3.brushX()
+        .extent([[0, 0], [plotWidth, plotHeight2]])
+        .on("brush end", brushed);
+
+    let zoom: d3.ZoomBehavior<Element, {}> = d3.zoom()
+        .scaleExtent([1, Infinity])
+        .translateExtent([[0, 0], [plotWidth, plotHeight]])
+        .extent([[0, 0], [plotWidth, plotHeight]])
+        .on("zoom", zoomed);
+
     svg.append("defs").append("clipPath")
         .attr("id", "clip")
         .append("rect")
@@ -164,17 +174,6 @@ function drawPlot(data: DataFrame[]): void {
         .attr("transform", `translate(0,${plotHeight2})`)
         .call(x2Axis);
 
-    let brush: d3.BrushBehavior<{}> = d3.brushX()
-        .extent([[0, 0], [plotWidth, plotHeight2]])
-        .on("brush end", () => {
-            if (d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") {
-                return; // ignore brush-by-zoom
-            }
-            let s: any = d3.event.selection || x2Scale.range();
-            xScale.domain(s.map(x2Scale.invert, x2Scale));
-            focus.selectAll(".line").attr("d", (d: any) => line1(d.values));
-            focus.select<SVGGElement>(".x.axis").call(xAxis);
-        });
 
     context.append<SVGGElement>("g")
         .attr("class", "x brush")
@@ -182,6 +181,38 @@ function drawPlot(data: DataFrame[]): void {
         .selectAll("rect")
         .attr("y", -6)
         .attr("height", plotHeight2 + 7);
+
+    svg.append<any>("rect")
+        .attr("class", "zoom")
+        .attr("width", plotWidth)
+        .attr("height", plotHeight)
+        .attr("fill", "transparent")
+        .attr("transform", `translate(${plotMargins.left},${plotMargins.top})`)
+        .call(zoom);
+
+    function brushed(): void {
+        if (d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") {
+            return; // ignore brush-by-zoom
+        }
+        let s: any = d3.event.selection || x2Scale.range();
+        xScale.domain(s.map(x2Scale.invert, x2Scale));
+        focus.selectAll(".line").attr("d", (d: any) => line1(d.values));
+        focus.select<SVGGElement>(".x.axis").call(xAxis);
+        svg.select(".zoom").call(<any>zoom.transform, d3.zoomIdentity
+            .scale(plotWidth / (s[1] - s[0]))
+            .translate(-s[0], 0));
+    }
+
+    function zoomed(): void {
+        if (d3.event.sourceEvent && d3.event.sourceEvent.type === "brush") {
+            return; // ignore zoom-by-brush
+        }
+        let t: any = d3.event.transform;
+        xScale.domain(t.rescaleX(x2Scale).domain());
+        focus.selectAll(".line").attr("d", (d: any) => line1(d.values));
+        focus.select<SVGGElement>(".x.axis").call(xAxis);
+        context.select<SVGGElement>(".brush").call(brush.move, xScale.range().map(t.invertX, t));
+    }
 }
 
 function readData(text: File, hasHeader: boolean): void {
