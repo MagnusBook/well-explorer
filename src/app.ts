@@ -1,6 +1,6 @@
 import d3 = require("d3");
 import papa = require("papaparse");
-import { Axis } from "d3";
+import { Axis, line } from "d3";
 import $ = require("jquery");
 import "bootstrap/dist/css/bootstrap.min.css";
 
@@ -106,19 +106,6 @@ function drawPlot(data: DataFrame[]): void {
         .attr("class", "context")
         .attr("transform", `translate(0,${plotMargins2.top})`);
 
-    let brush: d3.BrushBehavior<{}> = d3.brushX()
-        .extent([[0, 0], [plotWidth, plotHeight2]])
-        .on("brush end", function(): void {
-            if(d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") {
-                return; // ignore brush-by-zoom
-            }
-            let s: any = d3.event.selection || x2Scale.range();
-            xScale.domain(s.map(x2Scale.invert, x2Scale));
-            focus.selectAll("path.line").attr("d", (type, d: any) => d.values);
-            focus.select<SVGGElement>(".x.axis").call(xAxis);
-            focus.select<SVGGElement>(".y.axis").call(yAxis);
-        });
-
     let line1: d3.Line<[number, number]> = d3.line()
         .curve(d3.curveBasis)
         .x(d => xScale(d[0]))
@@ -177,6 +164,18 @@ function drawPlot(data: DataFrame[]): void {
         .attr("transform", `translate(0,${plotHeight2})`)
         .call(x2Axis);
 
+    let brush: d3.BrushBehavior<{}> = d3.brushX()
+        .extent([[0, 0], [plotWidth, plotHeight2]])
+        .on("brush end", () => {
+            if (d3.event.sourceEvent && d3.event.sourceEvent.type === "zoom") {
+                return; // ignore brush-by-zoom
+            }
+            let s: any = d3.event.selection || x2Scale.range();
+            xScale.domain(s.map(x2Scale.invert, x2Scale));
+            focus.selectAll(".line").attr("d", (d: any) => line1(d.values));
+            focus.select<SVGGElement>(".x.axis").call(xAxis);
+        });
+
     context.append<SVGGElement>("g")
         .attr("class", "x brush")
         .call(brush)
@@ -187,7 +186,7 @@ function drawPlot(data: DataFrame[]): void {
 
 function readData(text: File, hasHeader: boolean): void {
     papa.parse(text, {
-        worker: papa.WORKERS_SUPPORTED,
+        worker: false,
         skipEmptyLines: true,
         header: hasHeader,
         complete: function (results: papa.ParseResult, file: File): void {
