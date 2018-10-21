@@ -3,10 +3,11 @@ import { connect } from 'react-redux';
 import { ScaleLinear, scaleLinear, ScaleOrdinal, scaleOrdinal } from 'd3-scale';
 import { schemeCategory10 } from 'd3-scale-chromatic';
 import { max, min } from 'd3-array';
-import { axisBottom, axisLeft, Axis } from 'd3-axis';
+import { axisBottom, axisLeft, axisRight, Axis } from 'd3-axis';
 import { select } from 'd3-selection';
 import { line, curveBasis } from 'd3-shape';
 
+import { withStyles } from '@material-ui/core/styles';
 import Typography from '@material-ui/core/Typography';
 
 import Types from 'Types';
@@ -14,21 +15,28 @@ import Types from 'Types';
 type margins = { top: number; right: number; bottom: number; left: number };
 type linearAxis = Axis<number | { valueOf(): number }>;
 
+const styles = {
+    line: {
+        fill: 'none',
+        strokeWidth: '2px',
+    },
+};
+
 const svgWidth = 960,
     svgHeight = 500;
 
 const margins1: margins = {
-    top: 10,
-    right: 10,
+    top: 30,
+    right: 50,
     bottom: 100,
-    left: 40,
+    left: 50,
 };
 
 const margins2: margins = {
     top: 430,
-    right: 10,
+    right: 50,
     bottom: 40,
-    left: 40,
+    left: 50,
 };
 
 const width = svgWidth - margins1.left - margins1.right;
@@ -37,6 +45,8 @@ const height2 = svgHeight - margins2.top - margins2.bottom;
 
 class Plot extends React.Component {
     render() {
+        const { classes } = this.props as any;
+
         let plot: JSX.Element = (
             <Typography variant="h3" color="inherit" style={{ padding: '20px 0 0 20px' }}>
                 Load Some PDG Data to Get Started!
@@ -54,34 +64,40 @@ class Plot extends React.Component {
                 .domain(x.domain());
             const x2Axis: linearAxis = axisBottom(x2);
 
-            const y: d3.ScaleLinear<number, number> = scaleLinear()
+            const yPressure: d3.ScaleLinear<number, number> = scaleLinear()
                 .range([height, 0])
-                .domain([min(data, (d: any) => d.flow), max(data, (d: any) => d.pressure)]);
-            const yAxis: linearAxis = axisLeft(y);
+                // .domain([min(data, (d: any) => d.pressure), max(data, (d: any) => d.pressure)]);
+                .domain([1000, 5000]);
+            const yPressureAxis: linearAxis = axisLeft(yPressure);
+
+            const yFlow: d3.ScaleLinear<number, number> = scaleLinear()
+                .range([height, 0])
+                // .domain([min(data, (d: any) => d.flow), max(data, (d: any) => d.flow)]);
+                .domain([-10000, 25000]);
+            const yFlowAxis: linearAxis = axisRight(yFlow);
 
             const y2: d3.ScaleLinear<number, number> = scaleLinear()
                 .range([height2, 0])
-                .domain(y.domain());
-            // const y2Axis: linearAxis = axisLeft(y2);
+                .domain([min(data, (d: any) => d.flow), max(data, (d: any) => d.pressure)]);
 
-            const z: ScaleOrdinal<string, string> = scaleOrdinal(schemeCategory10);
-
-            const ids = ['Flow', 'Pressure'];
+            const ids = ['Pressure', 'Flow'];
+            const z: ScaleOrdinal<string, string> = scaleOrdinal(schemeCategory10)
+                .domain(ids);
 
             const valueLinesFocus = [
                 line<Types.PDGData>()
                     .x(d => x(d.time))
-                    .y(d => y(d.flow))
+                    .y(d => yPressure(d.pressure))
                     .curve(curveBasis),
                 line<Types.PDGData>()
                     .x(d => x(d.time))
-                    .y(d => y(d.pressure))
+                    .y(d => yFlow(d.flow))
                     .curve(curveBasis),
             ];
 
             const focusLines = valueLinesFocus.map((l, i) => (
                 <path
-                    className="line"
+                    className={classes.line}
                     key={'focus-' + ids[i]}
                     d={l(data) as string | undefined}
                     stroke={z(ids[i])}
@@ -93,17 +109,17 @@ class Plot extends React.Component {
             const valueLinesContext = [
                 line<Types.PDGData>()
                     .x(d => x2(d.time))
-                    .y(d => y2(d.flow))
+                    .y(d => y2(d.pressure))
                     .curve(curveBasis),
                 line<Types.PDGData>()
                     .x(d => x2(d.time))
-                    .y(d => y2(d.pressure))
+                    .y(d => y2(d.flow))
                     .curve(curveBasis),
             ];
 
             const contextLines = valueLinesContext.map((l, i) => (
                 <path
-                    className="line"
+                    className={classes.line}
                     key={'context-' + ids[i]}
                     d={l(data) as string | undefined}
                     stroke={z(ids[i])}
@@ -122,7 +138,14 @@ class Plot extends React.Component {
                         />
                         <g
                             className="axis axis--y"
-                            ref={node => select(node).call(yAxis)}
+                            stroke={z(ids[0])}
+                            ref={node => select(node).call(yPressureAxis)}
+                        />
+                        <g
+                            className="axis axis--y"
+                            stroke={z(ids[1])}
+                            transform={`translate(${width},0)`}
+                            ref={node => select(node).call(yFlowAxis)}
                         />
                         <g>
                             {focusLines}
@@ -141,7 +164,7 @@ class Plot extends React.Component {
                     </g>
                     <defs>
                         <clipPath id="clip">
-                            <rect width={width} height={height}/>
+                            <rect width={width} height={height} />
                         </clipPath>
                     </defs>
                 </svg>
@@ -155,4 +178,4 @@ const mapStateToProps = (state: Types.RootState) => ({
     data: state.plot.plotData,
 });
 
-export default connect(mapStateToProps)(Plot);
+export default withStyles(styles)(connect(mapStateToProps)(Plot));
