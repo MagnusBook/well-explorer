@@ -6,6 +6,9 @@ import { max, min } from 'd3-array';
 import { axisBottom, axisLeft, axisRight, Axis } from 'd3-axis';
 import { select } from 'd3-selection';
 import { line, curveBasis } from 'd3-shape';
+import { ZoomBehavior, zoom, zoomIdentity } from 'd3-zoom';
+import { event } from 'd3';
+import { brushX } from 'd3-brush';
 
 import { withStyles } from '@material-ui/core/styles';
 import Typography from '@material-ui/core/Typography';
@@ -97,12 +100,12 @@ class Plot extends React.Component {
 
             const focusLines = valueLinesFocus.map((l, i) => (
                 <path
-                    className={classes.line}
+                    className={`${classes.line} ${ids[i]}`}
                     key={'focus-' + ids[i]}
                     d={l(data) as string | undefined}
                     stroke={z(ids[i])}
                     fill="transparent"
-                    clip-path="url(#clip)"
+                    clipPath="url(#clip)"
                 />
             ));
 
@@ -124,9 +127,44 @@ class Plot extends React.Component {
                     d={l(data) as string | undefined}
                     stroke={z(ids[i])}
                     fill="transparent"
-                    clip-path="url(#clip)"
+                    clipPath="url(#clip)"
                 />
             ));
+
+            const brushBehavior = brushX()
+                .extent([[0, 0], [width, height2]])
+                .on('brush end', () => {
+                    if (event.sourceEvent && event.sourceEvent.type === 'zoom') {
+                        return; // ignore brush-by-zoom
+                    }
+                    const s: any = event.selection || x2.range();
+                    x.domain(s.map(x2.invert, x2));
+                    const focus = select('.focus');
+                    focus.selectAll('.line.Pressure').attr('d', (d: Types.PDGData[]) => valueLinesFocus[0](d));
+                    focus.selectAll('.line.Flow').attr('d', (d: Types.PDGData[]) => valueLinesFocus[1](d));
+                    focus.select<SVGGElement>('.axis.axis--x').call(xAxis);
+                    select('svg').select('.zoom').call((zoomBehavior as any).transform, zoomIdentity
+                        .scale(width / (s[1] - s[0]))
+                        .translate(-s[0], 0));
+                });
+
+            const zoomBehavior: ZoomBehavior<Element, {}> = zoom()
+                .scaleExtent([1, Infinity])
+                .translateExtent([[0, 0], [width, height]])
+                .extent([[0, 0], [width, height]])
+                .on('zoom', () => {
+                    if (event.sourceEvent && event.sourceEvent.type === 'brush') {
+                        return; // ignore zoom-by-brush
+                    }
+                    const t: any = event.transform;
+                    x.domain(t.rescaleX(x2).domain());
+                    const focus = select('.focus');
+                    focus.selectAll('.line.Pressure').attr('d', (d: Types.PDGData[]) => valueLinesFocus[0](d));
+                    focus.selectAll('.line.Flow').attr('d', (d: Types.PDGData[]) => valueLinesFocus[1](d));
+                    focus.select<SVGGElement>('.axis.axis--x').call(xAxis);
+                    select('.context').select<SVGGElement>('.brush')
+                        .call(brushBehavior.move, x.range().map(t.invertX, t));
+                });
 
             plot = (
                 <svg width={svgWidth} height={svgHeight}>
@@ -160,13 +198,26 @@ class Plot extends React.Component {
                         <g>
                             {contextLines}
                         </g>
-                        <g className="x brush" />
+                        <g
+                            className="x brush"
+                            ref={node => select(node).call(brushBehavior)}
+                        >
+                            <rect y={-6} height={height2 + 7} />
+                        </g>
                     </g>
                     <defs>
                         <clipPath id="clip">
                             <rect width={width} height={height} />
                         </clipPath>
                     </defs>
+                    <rect
+                        className="zoom"
+                        width={width}
+                        height={height}
+                        fill="transparent"
+                        transform={`translate(${margins1.left},${margins1.top})`}
+                        ref={(node: any) => select(node).call(zoomBehavior)}
+                    />
                 </svg>
             );
         }
