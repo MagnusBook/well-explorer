@@ -13,7 +13,7 @@ import { brushX } from 'd3-brush';
 import { withStyles } from '@material-ui/core/styles';
 import Typography from '@material-ui/core/Typography';
 
-import Types from 'Types';
+import { DataList, PDGData } from 'Types';
 
 type margins = { top: number; right: number; bottom: number; left: number };
 type linearAxis = Axis<number | { valueOf(): number }>;
@@ -55,7 +55,7 @@ class Plot extends React.Component {
                 Load Some PDG Data to Get Started!
             </Typography>
         );
-        const data: Types.DataList = (this.props as any).data;
+        const data: DataList = (this.props as any).data;
         if (data && data.length > 1) {
             const x: ScaleLinear<number, number> = scaleLinear()
                 .range([0, width])
@@ -88,11 +88,11 @@ class Plot extends React.Component {
                 .domain(ids);
 
             const valueLinesFocus = [
-                line<Types.PDGData>()
+                line<PDGData>()
                     .x(d => x(d.time))
                     .y(d => yPressure(d.pressure))
                     .curve(curveBasis),
-                line<Types.PDGData>()
+                line<PDGData>()
                     .x(d => x(d.time))
                     .y(d => yFlow(d.flow))
                     .curve(curveBasis),
@@ -110,11 +110,11 @@ class Plot extends React.Component {
             ));
 
             const valueLinesContext = [
-                line<Types.PDGData>()
+                line<PDGData>()
                     .x(d => x2(d.time))
                     .y(d => y2(d.pressure))
                     .curve(curveBasis),
-                line<Types.PDGData>()
+                line<PDGData>()
                     .x(d => x2(d.time))
                     .y(d => y2(d.flow))
                     .curve(curveBasis),
@@ -140,8 +140,8 @@ class Plot extends React.Component {
                     const s: any = event.selection || x2.range();
                     x.domain(s.map(x2.invert, x2));
                     const focus = select('.focus');
-                    focus.selectAll('.line.Pressure').attr('d', (d: Types.PDGData[]) => valueLinesFocus[0](d));
-                    focus.selectAll('.line.Flow').attr('d', (d: Types.PDGData[]) => valueLinesFocus[1](d));
+                    focus.selectAll('.line.Pressure').attr('d', (d: PDGData[]) => valueLinesFocus[0](d));
+                    focus.selectAll('.line.Flow').attr('d', (d: PDGData[]) => valueLinesFocus[1](d));
                     focus.select<SVGGElement>('.axis.axis--x').call(xAxis);
                     select('svg').select('.zoom').call((zoomBehavior as any).transform, zoomIdentity
                         .scale(width / (s[1] - s[0]))
@@ -159,8 +159,8 @@ class Plot extends React.Component {
                     const t: any = event.transform;
                     x.domain(t.rescaleX(x2).domain());
                     const focus = select('.focus');
-                    focus.selectAll('.line.Pressure').attr('d', (d: Types.PDGData[]) => valueLinesFocus[0](d));
-                    focus.selectAll('.line.Flow').attr('d', (d: Types.PDGData[]) => valueLinesFocus[1](d));
+                    focus.selectAll('.line.Pressure').attr('d', (d: PDGData[]) => valueLinesFocus[0](d));
+                    focus.selectAll('.line.Flow').attr('d', (d: PDGData[]) => valueLinesFocus[1](d));
                     focus.select<SVGGElement>('.axis.axis--x').call(xAxis);
                     select('.context').select<SVGGElement>('.brush')
                         .call(brushBehavior.move, x.range().map(t.invertX, t));
@@ -225,7 +225,7 @@ class Plot extends React.Component {
     }
 }
 
-const mapStateToProps = (state: Types.RootState) => ({
+const mapStateToProps = (state: any) => ({
     data: state.plot.plotData,
 });
 

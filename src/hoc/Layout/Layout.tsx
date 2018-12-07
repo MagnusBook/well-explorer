@@ -1,8 +1,7 @@
 import * as React from 'react';
-import { Dispatch, bindActionCreators } from 'redux';
+import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
 
-import Types from 'Types';
 import * as actions from '../../store/actions/index';
 import { withStyles } from '@material-ui/core/styles';
 import AppBar from '@material-ui/core/AppBar';
@@ -58,7 +57,7 @@ class Layout extends React.Component {
     }
 }
 
-const mapDispatchToProps = (dispatch: Dispatch<Types.RootAction>) => bindActionCreators({
+const mapDispatchToProps = (dispatch: any) => bindActionCreators({
     onFileChanged: actions.parsePlotData,
 }, dispatch);
 
