@@ -40,7 +40,15 @@ class Layout extends React.Component {
                             className={classes.input}
                             id="contained-button-file"
                             type="file"
-                            onChange={(event) => (this.props as any).onFileChanged(event.target.files, false)}
+                            onChange={event => {
+                                const reader = new FileReader();
+                                reader.onload = e => {
+                                    (this.props as any).onFileChanged(reader.result, false);
+                                };
+                                if (event.target.files) {
+                                    reader.readAsText(event.target.files[0]);
+                                }
+                            }}
                         />
                         <label htmlFor="contained-button-file">
                             <Button variant="contained" component="span" color="secondary" className={classes.button}>

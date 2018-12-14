@@ -7,11 +7,10 @@ const SET_PLOT_DATA_START = 'SET_PLOT_DATA_START';
 const SET_PLOT_DATA_SUCCESS = 'SET_PLOT_DATA_SUCCESS';
 const SET_PLOT_DATA_FAIL = 'SET_PLOT_DATA_FAIL';
 
-export const parsePlotData = (files: FileList, hasHeader: boolean) => {
-    const file = files[0];
+export const parsePlotData = (text: string, hasHeader: boolean) => {
     return (dispatch: any) => {
         dispatch(setPlotDataStart());
-        parse(file, {
+        parse(text, {
             complete: (results: ParseResult): void => {
                 try {
                     let plotData: Types.DataList = null;

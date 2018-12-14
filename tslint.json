@@ -7,7 +7,7 @@
     "import-blacklist": [true, "rxjs"],
     "interface-over-type-literal": false,
     "interface-name": false,
-    "max-line-length": [true, 120],
+    "max-line-length": [false, 120],
     "member-access": false,
     "member-ordering": [true, { "order": "fields-first" }],
     "newline-before-return": false,
@@ -30,6 +30,7 @@
     "prefer-template": [true, "allow-single-concat"],
     "quotemark": [true, "single", "jsx-double"],
     "semicolon": [true, "always"],
+    "no-console": false,
     "trailing-comma": [true, {
       "singleline": "never",
       "multiline": {
@@ -44,7 +45,7 @@
     "type-literal-delimiter": true,
     "typedef": [true,"parameter", "property-declaration"],
     "variable-name": [true, "ban-keywords", "check-format", "allow-pascal-case", "allow-leading-underscore"],
-    // tslint-react
-    "jsx-no-lambda": false
+    "jsx-no-lambda": false,
+    "jsx-no-multiline-js": false
   }
 }

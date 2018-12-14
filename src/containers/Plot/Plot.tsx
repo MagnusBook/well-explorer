@@ -10,10 +10,12 @@ import { ZoomBehavior, zoom, zoomIdentity } from 'd3-zoom';
 import { event } from 'd3';
 import { brushX } from 'd3-brush';
 
+import { parsePlotData } from '../../store/actions/index';
 import { withStyles } from '@material-ui/core/styles';
 import Typography from '@material-ui/core/Typography';
 
 import { DataList, PDGData } from 'Types';
+import SampleData from '../../assets/time_rate_pressure.csv';
 
 type margins = { top: number; right: number; bottom: number; left: number };
 type linearAxis = Axis<number | { valueOf(): number }>;
@@ -47,6 +49,15 @@ const height = svgHeight - margins1.top - margins1.bottom;
 const height2 = svgHeight - margins2.top - margins2.bottom;
 
 class Plot extends React.Component {
+    componentWillMount() {
+        const xmlhttp = new XMLHttpRequest();
+        xmlhttp.open('GET', SampleData, false);
+        xmlhttp.send();
+        if (xmlhttp.status === 200) {
+            (this.props as any).parsePlotData(xmlhttp.responseText, false);
+        }
+    }
+
     render() {
         const { classes } = this.props as any;
 
@@ -229,4 +240,8 @@ const mapStateToProps = (state: any) => ({
     data: state.plot.plotData,
 });
 
-export default withStyles(styles)(connect(mapStateToProps)(Plot));
+const mapDispatchToProps = (dispatch: any) => ({
+    parsePlotData: (text: string, hasHeader: boolean) => dispatch(parsePlotData(text, hasHeader)),
+});
+
+export default withStyles(styles)(connect(mapStateToProps, mapDispatchToProps)(Plot));
