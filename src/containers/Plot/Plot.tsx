@@ -4,10 +4,9 @@ import { ScaleLinear, scaleLinear, ScaleOrdinal, scaleOrdinal } from 'd3-scale';
 import { schemeCategory10 } from 'd3-scale-chromatic';
 import { max, min } from 'd3-array';
 import { axisBottom, axisLeft, axisRight, Axis } from 'd3-axis';
-import { select } from 'd3-selection';
 import { line, curveBasis } from 'd3-shape';
 import { ZoomBehavior, zoom, zoomIdentity } from 'd3-zoom';
-import { event } from 'd3';
+import { event, select } from 'd3';
 import { brushX } from 'd3-brush';
 
 import { parsePlotData } from '../../store/actions/index';
@@ -48,7 +47,22 @@ const width = svgWidth - margins1.left - margins1.right;
 const height = svgHeight - margins1.top - margins1.bottom;
 const height2 = svgHeight - margins2.top - margins2.bottom;
 
+const ids = ['Pressure', 'Flow'];
+const z: ScaleOrdinal<string, string> = scaleOrdinal(schemeCategory10)
+    .domain(ids);
+
 class Plot extends React.Component {
+    xAxis = React.createRef<SVGGElement>();
+    x2Axis = React.createRef<SVGGElement>();
+    yPressureAxis = React.createRef<SVGGElement>();
+    yFlowAxis = React.createRef<SVGGElement>();
+    focusPressure = React.createRef<SVGPathElement>();
+    focusFlow = React.createRef<SVGPathElement>();
+    contextPressure = React.createRef<SVGPathElement>();
+    contextFlow = React.createRef<SVGPathElement>();
+    brush = React.createRef<SVGGElement>();
+    zoom = React.createRef<SVGRectElement>();
+
     componentWillMount() {
         const xmlhttp = new XMLHttpRequest();
         xmlhttp.open('GET', SampleData, false);
@@ -58,45 +72,39 @@ class Plot extends React.Component {
         }
     }
 
-    render() {
+    componentDidUpdate() {
         const { classes } = this.props as any;
-
-        let plot: JSX.Element = (
-            <Typography variant="h3" color="inherit" style={{ padding: '20px 0 0 20px' }}>
-                Load Some PDG Data to Get Started!
-            </Typography>
-        );
         const data: DataList = (this.props as any).data;
         if (data && data.length > 1) {
             const x: ScaleLinear<number, number> = scaleLinear()
                 .range([0, width])
                 .domain([data[0].time, data[data.length - 1].time]);
             const xAxis: linearAxis = axisBottom(x);
+            select(this.xAxis.current).call(xAxis);
 
             const x2: ScaleLinear<number, number> = scaleLinear()
                 .range(x.range())
                 .domain(x.domain());
             const x2Axis: linearAxis = axisBottom(x2);
+            select(this.x2Axis.current).call(x2Axis);
 
             const yPressure: d3.ScaleLinear<number, number> = scaleLinear()
                 .range([height, 0])
                 // .domain([min(data, (d: any) => d.pressure), max(data, (d: any) => d.pressure)]);
                 .domain([1000, 5000]);
             const yPressureAxis: linearAxis = axisLeft(yPressure);
+            select(this.yPressureAxis.current).call(yPressureAxis);
 
             const yFlow: d3.ScaleLinear<number, number> = scaleLinear()
                 .range([height, 0])
                 // .domain([min(data, (d: any) => d.flow), max(data, (d: any) => d.flow)]);
                 .domain([-10000, 25000]);
             const yFlowAxis: linearAxis = axisRight(yFlow);
+            select(this.yFlowAxis.current).call(yFlowAxis);
 
             const y2: d3.ScaleLinear<number, number> = scaleLinear()
                 .range([height2, 0])
                 .domain([min(data, (d: any) => d.flow), max(data, (d: any) => d.pressure)]);
-
-            const ids = ['Pressure', 'Flow'];
-            const z: ScaleOrdinal<string, string> = scaleOrdinal(schemeCategory10)
-                .domain(ids);
 
             const valueLinesFocus = [
                 line<PDGData>()
@@ -109,16 +117,19 @@ class Plot extends React.Component {
                     .curve(curveBasis),
             ];
 
-            const focusLines = valueLinesFocus.map((l, i) => (
-                <path
-                    className={`${classes.line} ${ids[i]}`}
-                    key={'focus-' + ids[i]}
-                    d={l(data) as string | undefined}
-                    stroke={z(ids[i])}
-                    fill="transparent"
-                    clipPath="url(#clip)"
-                />
-            ));
+            select(this.focusPressure.current).attr('d', valueLinesFocus[0](data))
+                .attr('class', classes.line)
+                .attr('stroke', z(ids[0]))
+                .attr('fill', 'transparent')
+                .attr('clip-path', 'url(#clip)')
+                .datum(data);
+
+            select(this.focusFlow.current).attr('d', valueLinesFocus[1](data))
+                .attr('class', classes.line)
+                .attr('stroke', z(ids[1]))
+                .attr('fill', 'transparent')
+                .attr('clip-path', 'url(#clip)')
+                .datum(data);
 
             const valueLinesContext = [
                 line<PDGData>()
@@ -131,16 +142,19 @@ class Plot extends React.Component {
                     .curve(curveBasis),
             ];
 
-            const contextLines = valueLinesContext.map((l, i) => (
-                <path
-                    className={classes.line}
-                    key={'context-' + ids[i]}
-                    d={l(data) as string | undefined}
-                    stroke={z(ids[i])}
-                    fill="transparent"
-                    clipPath="url(#clip)"
-                />
-            ));
+            select(this.contextPressure.current).attr('d', valueLinesContext[0](data))
+                .attr('class', classes.line)
+                .attr('stroke', z(ids[0]))
+                .attr('fill', 'transparent')
+                .attr('clip-path', 'url(#clip)')
+                .datum(data);
+
+            select(this.contextFlow.current).attr('d', valueLinesContext[1](data))
+                .attr('class', classes.line)
+                .attr('stroke', z(ids[1]))
+                .attr('fill', 'transparent')
+                .attr('clip-path', 'url(#clip)')
+                .datum(data);
 
             const brushBehavior = brushX()
                 .extent([[0, 0], [width, height2]])
@@ -150,11 +164,10 @@ class Plot extends React.Component {
                     }
                     const s: any = event.selection || x2.range();
                     x.domain(s.map(x2.invert, x2));
-                    const focus = select('.focus');
-                    focus.selectAll('.line.Pressure').attr('d', (d: PDGData[]) => valueLinesFocus[0](d));
-                    focus.selectAll('.line.Flow').attr('d', (d: PDGData[]) => valueLinesFocus[1](d));
-                    focus.select<SVGGElement>('.axis.axis--x').call(xAxis);
-                    select('svg').select('.zoom').call((zoomBehavior as any).transform, zoomIdentity
+                    select(this.focusPressure.current).attr('d', (d: PDGData[]) => valueLinesFocus[0](d));
+                    select(this.focusFlow.current).attr('d', (d: PDGData[]) => valueLinesFocus[1](d));
+                    select(this.xAxis.current).call(xAxis);
+                    select(this.zoom.current).call((zoomBehavior as any).transform, zoomIdentity
                         .scale(width / (s[1] - s[0]))
                         .translate(-s[0], 0));
                 });
@@ -169,49 +182,63 @@ class Plot extends React.Component {
                     }
                     const t: any = event.transform;
                     x.domain(t.rescaleX(x2).domain());
-                    const focus = select('.focus');
-                    focus.selectAll('.line.Pressure').attr('d', (d: PDGData[]) => valueLinesFocus[0](d));
-                    focus.selectAll('.line.Flow').attr('d', (d: PDGData[]) => valueLinesFocus[1](d));
-                    focus.select<SVGGElement>('.axis.axis--x').call(xAxis);
-                    select('.context').select<SVGGElement>('.brush')
+                    select(this.focusPressure.current).attr('d', (d: PDGData[]) => valueLinesFocus[0](d));
+                    select(this.focusFlow.current).attr('d', (d: PDGData[]) => valueLinesFocus[1](d));
+                    select(this.xAxis.current).call(xAxis);
+                    select(this.brush.current)
                         .call(brushBehavior.move, x.range().map(t.invertX, t));
                 });
 
+            select(this.brush.current).call(brushBehavior);
+            select(this.zoom.current).call(zoomBehavior);
+        }
+    }
+
+    render() {
+        let plot: JSX.Element = (
+            <Typography variant="h3" color="inherit" style={{ padding: '20px 0 0 20px' }}>
+                Load Some PDG Data to Get Started!
+            </Typography>
+        );
+
+        if ((this.props as any).data) {
             plot = (
                 <svg width={svgWidth} height={svgHeight}>
-                    <g className="focus" transform={`translate(${margins1.left},${margins1.top})`}>
+                    <g transform={`translate(${margins1.left},${margins1.top})`}>
                         <g
                             className="axis axis--x"
                             transform={`translate(${0},${height})`}
-                            ref={node => select(node).call(xAxis)}
+                            ref={this.xAxis}
                         />
                         <g
                             className="axis axis--y"
                             stroke={z(ids[0])}
-                            ref={node => select(node).call(yPressureAxis)}
+                            ref={this.yPressureAxis}
                         />
                         <g
                             className="axis axis--y"
                             stroke={z(ids[1])}
                             transform={`translate(${width},0)`}
-                            ref={node => select(node).call(yFlowAxis)}
+                            ref={this.yFlowAxis}
                         />
                         <g>
-                            {focusLines}
+                            <path ref={this.focusPressure} />
+                            <path ref={this.focusFlow} />
                         </g>
                     </g>
-                    <g className="context" transform={`translate(${margins2.left},${margins2.top})`}>
+                    <g transform={`translate(${margins2.left},${margins2.top})`}>
                         <g
                             className="axis axis--x"
                             transform={`translate(${0},${height2})`}
-                            ref={node => select(node).call(x2Axis)}
+                            ref={this.x2Axis}
                         />
                         <g>
-                            {contextLines}
+                            <path ref={this.contextPressure} />
+                            <path ref={this.contextFlow} />
                         </g>
                         <g
                             className="x brush"
-                            ref={node => select(node).call(brushBehavior)}
+                            ref={this.brush}
                         >
                             <rect y={-6} height={height2 + 7} />
                         </g>
@@ -227,7 +254,7 @@ class Plot extends React.Component {
                         height={height}
                         fill="transparent"
                         transform={`translate(${margins1.left},${margins1.top})`}
-                        ref={(node: any) => select(node).call(zoomBehavior)}
+                        ref={this.zoom}
                     />
                 </svg>
             );
