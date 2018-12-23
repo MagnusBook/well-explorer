@@ -1,7 +1,7 @@
 import { createStandardAction } from 'typesafe-actions';
 import { parse, ParseResult } from 'papaparse';
 
-import Types from 'Types';
+import { DataList, PDGData } from 'Types';
 
 const SET_PLOT_DATA_START = 'SET_PLOT_DATA_START';
 const SET_PLOT_DATA_SUCCESS = 'SET_PLOT_DATA_SUCCESS';
@@ -13,7 +13,7 @@ export const parsePlotData = (text: string, hasHeader: boolean) => {
         parse(text, {
             complete: (results: ParseResult): void => {
                 try {
-                    let plotData: Types.DataList = null;
+                    let plotData: DataList<PDGData> = null;
                     if (!hasHeader) {
                         plotData = results.data.map(([time, flow, pressure]) =>
                             ({ time: +time, flow: +flow, pressure: +pressure }));
@@ -34,5 +34,5 @@ export const parsePlotData = (text: string, hasHeader: boolean) => {
 };
 
 export const setPlotDataStart = createStandardAction(SET_PLOT_DATA_START)<void>();
-export const setPlotDataSuccess = createStandardAction(SET_PLOT_DATA_SUCCESS)<Types.DataList>();
+export const setPlotDataSuccess = createStandardAction(SET_PLOT_DATA_SUCCESS)<DataList<PDGData>>();
 export const setPlotDataFail = createStandardAction(SET_PLOT_DATA_FAIL)<string>();

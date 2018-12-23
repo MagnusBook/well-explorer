@@ -72,10 +72,34 @@ var Plot = /** @class */ (function (_super) {
         _this.yFlowAxis = React.createRef();
         _this.focusPressure = React.createRef();
         _this.focusFlow = React.createRef();
+        _this.injectivity = React.createRef();
         _this.contextPressure = React.createRef();
         _this.contextFlow = React.createRef();
         _this.brush = React.createRef();
         _this.zoom = React.createRef();
+        // An attempt at calculating the injectivity (Pressure integral) using the method given in
+        // http://article.sciencepublishinggroup.com/pdf/10.11648.j.ajam.20170502.12.pdf
+        // Did not get sensible results even using this technique, probably since the data is
+        // extremely concentrated at some points, while being very sparse in others.
+        _this.calculateInjectivity = function (data, step) {
+            var maxTime = data[data.length - 1].time;
+            var res = [];
+            var t = data[0].time;
+            var i = 1;
+            while (t < maxTime) {
+                var nextStep = t + step;
+                var area = 0;
+                while (t < nextStep) {
+                    if (t < nextStep) {
+                        area += ((data[i].time - data[i - 1].time) * (data[i - 1].pressure + data[i].pressure)) / 2;
+                    }
+                    t += data[i].time - data[i - 1].time;
+                    i++;
+                }
+                res.push({ time: t, injectivity: area });
+            }
+            return res;
+        };
         return _this;
     }
     Plot.prototype.componentWillMount = function () {
@@ -91,6 +115,7 @@ var Plot = /** @class */ (function (_super) {
         var classes = this.props.classes;
         var data = this.props.data;
         if (data && data.length > 1) {
+            // const injectivityData = this.calculateInjectivity(data, 0.000000001);
             var x_1 = d3_scale_1.scaleLinear()
                 .range([0, width])
                 .domain([data[0].time, data[data.length - 1].time]);
@@ -138,6 +163,12 @@ var Plot = /** @class */ (function (_super) {
                 .attr('fill', 'transparent')
                 .attr('clip-path', 'url(#clip)')
                 .datum(data);
+            // select(this.injectivity.current).selectAll('dot')
+            //    .data(injectivityData)
+            //    .enter().append('circle')
+            //    .attr('r', 3)
+            //    .attr('cx', (d: Injectivity) => x(d.time))
+            //    .attr('cy', (d: Injectivity) => yFlow(d.injectivity));
             var valueLinesContext = [
                 d3_shape_1.line()
                     .x(function (d) { return x2_1(d.time); })
@@ -170,6 +201,9 @@ var Plot = /** @class */ (function (_super) {
                 x_1.domain(s.map(x2_1.invert, x2_1));
                 d3_1.select(_this.focusPressure.current).attr('d', function (d) { return valueLinesFocus_1[0](d); });
                 d3_1.select(_this.focusFlow.current).attr('d', function (d) { return valueLinesFocus_1[1](d); });
+                d3_1.select(_this.injectivity.current).selectAll('dot').selectAll('circle')
+                    .attr('cx', function (d) { return x_1(d.time); })
+                    .attr('cy', function (d) { return yFlow_1(d.injectivity); });
                 d3_1.select(_this.xAxis.current).call(xAxis_1);
                 d3_1.select(_this.zoom.current).call(zoomBehavior_1.transform, d3_zoom_1.zoomIdentity
                     .scale(width / (s[1] - s[0]))
@@ -187,6 +221,10 @@ var Plot = /** @class */ (function (_super) {
                 x_1.domain(t.rescaleX(x2_1).domain());
                 d3_1.select(_this.focusPressure.current).attr('d', function (d) { return valueLinesFocus_1[0](d); });
                 d3_1.select(_this.focusFlow.current).attr('d', function (d) { return valueLinesFocus_1[1](d); });
+                console.log(d3_1.select(_this.injectivity.current));
+                d3_1.select(_this.injectivity.current).selectAll('dot').selectAll('circle')
+                    .attr('cx', function (d) { return x_1(d.time); })
+                    .attr('cy', function (d) { return yFlow_1(d.injectivity); });
                 d3_1.select(_this.xAxis.current).call(xAxis_1);
                 d3_1.select(_this.brush.current)
                     .call(brushBehavior_1.move, x_1.range().map(t.invertX, t));
@@ -204,6 +242,7 @@ var Plot = /** @class */ (function (_super) {
                     React.createElement("g", { className: "axis axis--y", stroke: z(ids[0]), ref: this.yPressureAxis }),
                     React.createElement("g", { className: "axis axis--y", stroke: z(ids[1]), transform: "translate(" + width + ",0)", ref: this.yFlowAxis }),
                     React.createElement("g", null,
+                        React.createElement("g", { ref: this.injectivity }),
                         React.createElement("path", { ref: this.focusPressure }),
                         React.createElement("path", { ref: this.focusFlow }))),
                 React.createElement("g", { transform: "translate(" + margins2.left + "," + margins2.top + ")" },
@@ -216,7 +255,10 @@ var Plot = /** @class */ (function (_super) {
                 React.createElement("defs", null,
                     React.createElement("clipPath", { id: "clip" },
                         React.createElement("rect", { width: width, height: height }))),
-                React.createElement("rect", { className: "zoom", width: width, height: height, fill: "transparent", transform: "translate(" + margins1.left + "," + margins1.top + ")", ref: this.zoom })));
+                React.createElement("rect", { className: "zoom", width: width, height: height, fill: "transparent", transform: "translate(" + margins1.left + "," + margins1.top + ")", ref: this.zoom }),
+                React.createElement("rect", { x: width - 100, y: 30, rx: "5px", width: 140, height: 40, stroke: "darkgray", fill: "white" }),
+                React.createElement("text", { x: width - 90, y: 40, dy: "0.32em", style: { fontWeight: 'bold' }, stroke: z(ids[0]) }, ids[0]),
+                React.createElement("text", { x: width - 90, y: 40 + 20, dy: "0.32em", style: { fontWeight: 'bold' }, stroke: z(ids[1]) }, ids[1])));
         }
         return plot;
     };

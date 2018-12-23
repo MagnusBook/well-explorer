@@ -1,7 +1,7 @@
 import { combineReducers } from 'redux';
 import { ActionType, getType } from 'typesafe-actions';
 
-import Types from 'Types';
+import { DataList, PDGData } from 'Types';
 
 import * as plotActions from '../actions/plot';
 
@@ -9,7 +9,7 @@ export type PlotAction = ActionType<typeof plotActions>;
 
 export type PlotState = {
     readonly hasHeader: boolean;
-    readonly plotData: Types.DataList;
+    readonly plotData: DataList<PDGData>;
     readonly error: string;
 };
 

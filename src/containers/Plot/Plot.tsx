@@ -13,7 +13,7 @@ import { parsePlotData } from '../../store/actions/index';
 import { withStyles } from '@material-ui/core/styles';
 import Typography from '@material-ui/core/Typography';
 
-import { DataList, PDGData } from 'Types';
+import { DataList, PDGData, Injectivity } from 'Types';
 import SampleData from '../../assets/time_rate_pressure.csv';
 
 type margins = { top: number; right: number; bottom: number; left: number };
@@ -58,10 +58,35 @@ class Plot extends React.Component {
     yFlowAxis = React.createRef<SVGGElement>();
     focusPressure = React.createRef<SVGPathElement>();
     focusFlow = React.createRef<SVGPathElement>();
+    injectivity = React.createRef<SVGGElement>();
     contextPressure = React.createRef<SVGPathElement>();
     contextFlow = React.createRef<SVGPathElement>();
     brush = React.createRef<SVGGElement>();
     zoom = React.createRef<SVGRectElement>();
+
+    // An attempt at calculating the injectivity (Pressure integral) using the method given in
+    // http://article.sciencepublishinggroup.com/pdf/10.11648.j.ajam.20170502.12.pdf
+    // Did not get sensible results even using this technique, probably since the data is
+    // extremely concentrated at some points, while being very sparse in others.
+    calculateInjectivity = (data: DataList<PDGData>, step: number): DataList<Injectivity> => {
+        const maxTime = data[data.length - 1].time;
+        const res: DataList<Injectivity> = [];
+        let t = data[0].time;
+        let i = 1;
+        while (t < maxTime) {
+            const nextStep = t + step;
+            let area = 0;
+            while (t < nextStep) {
+                if (t < nextStep) {
+                    area += ((data[i].time - data[i - 1].time) * (data[i - 1].pressure + data[i].pressure)) / 2;
+                }
+                t += data[i].time - data[i - 1].time;
+                i++;
+            }
+            res.push({ time: t, injectivity: area });
+        }
+        return res;
+    }
 
     componentWillMount() {
         const xmlhttp = new XMLHttpRequest();
@@ -74,8 +99,10 @@ class Plot extends React.Component {
 
     componentDidUpdate() {
         const { classes } = this.props as any;
-        const data: DataList = (this.props as any).data;
+        const data: DataList<PDGData> = (this.props as any).data;
         if (data && data.length > 1) {
+            // const injectivityData = this.calculateInjectivity(data, 0.000000001);
+
             const x: ScaleLinear<number, number> = scaleLinear()
                 .range([0, width])
                 .domain([data[0].time, data[data.length - 1].time]);
@@ -131,6 +158,13 @@ class Plot extends React.Component {
                 .attr('clip-path', 'url(#clip)')
                 .datum(data);
 
+            // select(this.injectivity.current).selectAll('dot')
+            //    .data(injectivityData)
+            //    .enter().append('circle')
+            //    .attr('r', 3)
+            //    .attr('cx', (d: Injectivity) => x(d.time))
+            //    .attr('cy', (d: Injectivity) => yFlow(d.injectivity));
+
             const valueLinesContext = [
                 line<PDGData>()
                     .x(d => x2(d.time))
@@ -166,6 +200,9 @@ class Plot extends React.Component {
                     x.domain(s.map(x2.invert, x2));
                     select(this.focusPressure.current).attr('d', (d: PDGData[]) => valueLinesFocus[0](d));
                     select(this.focusFlow.current).attr('d', (d: PDGData[]) => valueLinesFocus[1](d));
+                    select(this.injectivity.current).selectAll('dot').selectAll('circle')
+                        .attr('cx', (d: Injectivity) => x(d.time))
+                        .attr('cy', (d: Injectivity) => yFlow(d.injectivity));
                     select(this.xAxis.current).call(xAxis);
                     select(this.zoom.current).call((zoomBehavior as any).transform, zoomIdentity
                         .scale(width / (s[1] - s[0]))
@@ -184,6 +221,10 @@ class Plot extends React.Component {
                     x.domain(t.rescaleX(x2).domain());
                     select(this.focusPressure.current).attr('d', (d: PDGData[]) => valueLinesFocus[0](d));
                     select(this.focusFlow.current).attr('d', (d: PDGData[]) => valueLinesFocus[1](d));
+                    console.log(select(this.injectivity.current));
+                    select(this.injectivity.current).selectAll('dot').selectAll('circle')
+                        .attr('cx', (d: Injectivity) => x(d.time))
+                        .attr('cy', (d: Injectivity) => yFlow(d.injectivity));
                     select(this.xAxis.current).call(xAxis);
                     select(this.brush.current)
                         .call(brushBehavior.move, x.range().map(t.invertX, t));
@@ -222,6 +263,7 @@ class Plot extends React.Component {
                             ref={this.yFlowAxis}
                         />
                         <g>
+                            <g ref={this.injectivity} />
                             <path ref={this.focusPressure} />
                             <path ref={this.focusFlow} />
                         </g>
@@ -256,6 +298,33 @@ class Plot extends React.Component {
                         transform={`translate(${margins1.left},${margins1.top})`}
                         ref={this.zoom}
                     />
+                    <rect
+                        x={width - 100}
+                        y={30}
+                        rx="5px"
+                        width={140}
+                        height={40}
+                        stroke="darkgray"
+                        fill="white"
+                    />
+                    <text
+                        x={width - 90}
+                        y={40}
+                        dy="0.32em"
+                        style={{ fontWeight: 'bold' }}
+                        stroke={z(ids[0])}
+                    >
+                        {ids[0]}
+                    </text>
+                    <text
+                        x={width - 90}
+                        y={40 + 20}
+                        dy="0.32em"
+                        style={{ fontWeight: 'bold' }}
+                        stroke={z(ids[1])}
+                    >
+                        {ids[1]}
+                    </text>
                 </svg>
             );
         }
