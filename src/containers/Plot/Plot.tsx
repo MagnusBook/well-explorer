@@ -10,14 +10,11 @@ import { event, select } from 'd3';
 import { brushX } from 'd3-brush';
 
 import { parsePlotData } from '../../store/actions/index';
-import { withStyles } from '@material-ui/core/styles';
 import Typography from '@material-ui/core/Typography';
+import { withStyles } from '@material-ui/core/styles';
 
-import { DataList, PDGData, Injectivity } from 'Types';
+import { DataList, PDGData, Injectivity, DataConfig } from 'Types';
 import SampleData from '../../assets/time_rate_pressure.csv';
-
-type margins = { top: number; right: number; bottom: number; left: number };
-type linearAxis = Axis<number | { valueOf(): number }>;
 
 const styles = {
     line: {
@@ -25,6 +22,9 @@ const styles = {
         strokeWidth: '2px',
     },
 };
+
+type margins = { top: number; right: number; bottom: number; left: number };
+type linearAxis = Axis<number | { valueOf(): number }>;
 
 const svgWidth = 960,
     svgHeight = 500;
@@ -51,7 +51,7 @@ const ids = ['Pressure', 'Flow'];
 const z: ScaleOrdinal<string, string> = scaleOrdinal(schemeCategory10)
     .domain(ids);
 
-class Plot extends React.Component {
+class Plot extends React.Component<{ data: DataList<PDGData> }> {
     xAxis = React.createRef<SVGGElement>();
     x2Axis = React.createRef<SVGGElement>();
     yPressureAxis = React.createRef<SVGGElement>();
@@ -89,17 +89,25 @@ class Plot extends React.Component {
     }
 
     componentWillMount() {
-        const xmlhttp = new XMLHttpRequest();
-        xmlhttp.open('GET', SampleData, false);
-        xmlhttp.send();
-        if (xmlhttp.status === 200) {
-            (this.props as any).parsePlotData(xmlhttp.responseText, false);
+        if (!this.props.data || this.props.data.length === 0) {
+            const xmlhttp = new XMLHttpRequest();
+            xmlhttp.open('GET', SampleData, false);
+            xmlhttp.send();
+            if (xmlhttp.status === 200) {
+                const config: DataConfig = {
+                    hasHeader: false,
+                    timeIndex: 0,
+                    pressureIndex: 2,
+                    flowIndex: 1,
+                };
+                (this.props as any).parsePlotData(xmlhttp.responseText, config);
+            }
         }
     }
 
     componentDidUpdate() {
         const { classes } = this.props as any;
-        const data: DataList<PDGData> = (this.props as any).data;
+        const data: DataList<PDGData> = this.props.data;
         if (data && data.length > 1) {
             // const injectivityData = this.calculateInjectivity(data, 0.000000001);
 
@@ -221,7 +229,6 @@ class Plot extends React.Component {
                     x.domain(t.rescaleX(x2).domain());
                     select(this.focusPressure.current).attr('d', (d: PDGData[]) => valueLinesFocus[0](d));
                     select(this.focusFlow.current).attr('d', (d: PDGData[]) => valueLinesFocus[1](d));
-                    console.log(select(this.injectivity.current));
                     select(this.injectivity.current).selectAll('dot').selectAll('circle')
                         .attr('cx', (d: Injectivity) => x(d.time))
                         .attr('cy', (d: Injectivity) => yFlow(d.injectivity));
@@ -242,7 +249,7 @@ class Plot extends React.Component {
             </Typography>
         );
 
-        if ((this.props as any).data) {
+        if (this.props.data && this.props.data.length > 0) {
             plot = (
                 <svg width={svgWidth} height={svgHeight}>
                     <g transform={`translate(${margins1.left},${margins1.top})`}>
@@ -311,7 +318,6 @@ class Plot extends React.Component {
                         x={width - 90}
                         y={40}
                         dy="0.32em"
-                        style={{ fontWeight: 'bold' }}
                         stroke={z(ids[0])}
                     >
                         {ids[0]}
@@ -320,7 +326,6 @@ class Plot extends React.Component {
                         x={width - 90}
                         y={40 + 20}
                         dy="0.32em"
-                        style={{ fontWeight: 'bold' }}
                         stroke={z(ids[1])}
                     >
                         {ids[1]}
@@ -337,7 +342,7 @@ const mapStateToProps = (state: any) => ({
 });
 
 const mapDispatchToProps = (dispatch: any) => ({
-    parsePlotData: (text: string, hasHeader: boolean) => dispatch(parsePlotData(text, hasHeader)),
+    parsePlotData: (text: string, config: DataConfig) => dispatch(parsePlotData(text, config)),
 });
 
 export default withStyles(styles)(connect(mapStateToProps, mapDispatchToProps)(Plot));

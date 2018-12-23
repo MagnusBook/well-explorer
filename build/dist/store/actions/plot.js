@@ -5,23 +5,22 @@ var papaparse_1 = require("papaparse");
 var SET_PLOT_DATA_START = 'SET_PLOT_DATA_START';
 var SET_PLOT_DATA_SUCCESS = 'SET_PLOT_DATA_SUCCESS';
 var SET_PLOT_DATA_FAIL = 'SET_PLOT_DATA_FAIL';
-exports.parsePlotData = function (text, hasHeader) {
+exports.parsePlotData = function (text, config) {
     return function (dispatch) {
         dispatch(exports.setPlotDataStart());
         papaparse_1.parse(text, {
             complete: function (results) {
                 try {
                     var plotData = null;
-                    if (!hasHeader) {
-                        plotData = results.data.map(function (_a) {
-                            var time = _a[0], flow = _a[1], pressure = _a[2];
-                            return ({ time: +time, flow: +flow, pressure: +pressure });
+                    if (!config.hasHeader) {
+                        plotData = results.data.map(function (arr) {
+                            return ({ time: +arr[config.timeIndex], flow: +arr[config.flowIndex], pressure: +arr[config.pressureIndex] });
                         });
                     }
                     else {
-                        plotData = results.data.map(function (_a) {
-                            var time = _a.time, flow = _a.flow, pressure = _a.pressure;
-                            return ({ time: +time, flow: +flow, pressure: +pressure });
+                        var keys_1 = text.split('\n', 1)[0].split(',');
+                        plotData = results.data.map(function (obj) {
+                            return { time: +obj[keys_1[config.timeIndex].trim()], flow: +obj[keys_1[config.flowIndex].trim()], pressure: +obj[keys_1[config.pressureIndex].trim()] };
                         });
                     }
                     dispatch(exports.setPlotDataSuccess(plotData));
@@ -30,7 +29,7 @@ exports.parsePlotData = function (text, hasHeader) {
                     dispatch(exports.setPlotDataFail(err.message));
                 }
             },
-            header: hasHeader,
+            header: config.hasHeader,
             skipEmptyLines: true,
             worker: false,
         });

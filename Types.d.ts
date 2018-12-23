@@ -10,5 +10,12 @@ declare module 'Types' {
         injectivity: number
     }
 
+    export interface DataConfig {
+        hasHeader: boolean,
+        timeIndex: number,
+        pressureIndex: number,
+        flowIndex: number
+    }
+
     export type DataList<T> = T[] | null;
 }

@@ -1,13 +1,13 @@
 import * as React from 'react';
-import { bindActionCreators } from 'redux';
-import { connect } from 'react-redux';
 
-import * as actions from '../../store/actions/index';
 import { withStyles } from '@material-ui/core/styles';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
 import Button from '@material-ui/core/Button';
+
+import Modal from '../../components/UI/Modal/Modal';
+import DataConfigurator from '../../containers/DataConfigurator/DataConfigurator';
 
 const styles = (theme: any) => ({
     root: {
@@ -25,6 +25,26 @@ const styles = (theme: any) => ({
 });
 
 class Layout extends React.Component {
+    state = {
+        configuring: false,
+        data: '',
+    };
+
+    configurationCancelledHandler = () => {
+        this.setState({configuring: false});
+    }
+
+    fileChangedHandler = (event: React.ChangeEvent<HTMLInputElement>) => {
+        this.setState({configuring: true});
+        const reader = new FileReader();
+        reader.onload = e => {
+            this.setState({data: reader.result});
+        };
+        if (event.target.files) {
+            reader.readAsText(event.target.files[0]);
+        }
+    }
+
     render() {
         const { classes } = this.props as any;
         return (
@@ -40,15 +60,7 @@ class Layout extends React.Component {
                             className={classes.input}
                             id="contained-button-file"
                             type="file"
-                            onChange={event => {
-                                const reader = new FileReader();
-                                reader.onload = e => {
-                                    (this.props as any).onFileChanged(reader.result, false);
-                                };
-                                if (event.target.files) {
-                                    reader.readAsText(event.target.files[0]);
-                                }
-                            }}
+                            onChange={this.fileChangedHandler}
                         />
                         <label htmlFor="contained-button-file">
                             <Button variant="contained" component="span" color="secondary" className={classes.button}>
@@ -58,6 +70,9 @@ class Layout extends React.Component {
                     </Toolbar>
                 </AppBar>
                 <main className={classes.Content}>
+                    <Modal show={this.state.configuring} modalClosed={this.configurationCancelledHandler}>
+                        <DataConfigurator data={this.state.data}/>
+                    </Modal>
                     {this.props.children}
                 </main>
             </div>
@@ -65,8 +80,4 @@ class Layout extends React.Component {
     }
 }
 
-const mapDispatchToProps = (dispatch: any) => bindActionCreators({
-    onFileChanged: actions.parsePlotData,
-}, dispatch);
-
-export default withStyles(styles)(connect(null, mapDispatchToProps)(Layout));
+export default withStyles(styles)(Layout);

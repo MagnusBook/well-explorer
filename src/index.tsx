@@ -7,6 +7,8 @@ import App from './App';
 import registerServiceWorker from './registerServiceWorker';
 import store from './store/store';
 
+(window as any).__MUI_USE_NEXT_TYPOGRAPHY_VARIANTS__ = true;
+
 const app = (
   <Provider store={store}>
     <App />

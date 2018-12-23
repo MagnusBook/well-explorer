@@ -17,6 +17,7 @@ require("./index.css");
 var App_1 = __importDefault(require("./App"));
 var registerServiceWorker_1 = __importDefault(require("./registerServiceWorker"));
 var store_1 = __importDefault(require("./store/store"));
+window.__MUI_USE_NEXT_TYPOGRAPHY_VARIANTS__ = true;
 var app = (React.createElement(react_redux_1.Provider, { store: store_1.default },
     React.createElement(App_1.default, null)));
 ReactDOM.render(app, document.getElementById('root'));

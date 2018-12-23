@@ -34,8 +34,8 @@ var d3_zoom_1 = require("d3-zoom");
 var d3_1 = require("d3");
 var d3_brush_1 = require("d3-brush");
 var index_1 = require("../../store/actions/index");
-var styles_1 = require("@material-ui/core/styles");
 var Typography_1 = __importDefault(require("@material-ui/core/Typography"));
+var styles_1 = require("@material-ui/core/styles");
 var time_rate_pressure_csv_1 = __importDefault(require("../../assets/time_rate_pressure.csv"));
 var styles = {
     line: {
@@ -103,11 +103,19 @@ var Plot = /** @class */ (function (_super) {
         return _this;
     }
     Plot.prototype.componentWillMount = function () {
-        var xmlhttp = new XMLHttpRequest();
-        xmlhttp.open('GET', time_rate_pressure_csv_1.default, false);
-        xmlhttp.send();
-        if (xmlhttp.status === 200) {
-            this.props.parsePlotData(xmlhttp.responseText, false);
+        if (!this.props.data || this.props.data.length === 0) {
+            var xmlhttp = new XMLHttpRequest();
+            xmlhttp.open('GET', time_rate_pressure_csv_1.default, false);
+            xmlhttp.send();
+            if (xmlhttp.status === 200) {
+                var config = {
+                    hasHeader: false,
+                    timeIndex: 0,
+                    pressureIndex: 2,
+                    flowIndex: 1,
+                };
+                this.props.parsePlotData(xmlhttp.responseText, config);
+            }
         }
     };
     Plot.prototype.componentDidUpdate = function () {
@@ -221,7 +229,6 @@ var Plot = /** @class */ (function (_super) {
                 x_1.domain(t.rescaleX(x2_1).domain());
                 d3_1.select(_this.focusPressure.current).attr('d', function (d) { return valueLinesFocus_1[0](d); });
                 d3_1.select(_this.focusFlow.current).attr('d', function (d) { return valueLinesFocus_1[1](d); });
-                console.log(d3_1.select(_this.injectivity.current));
                 d3_1.select(_this.injectivity.current).selectAll('dot').selectAll('circle')
                     .attr('cx', function (d) { return x_1(d.time); })
                     .attr('cy', function (d) { return yFlow_1(d.injectivity); });
@@ -235,7 +242,7 @@ var Plot = /** @class */ (function (_super) {
     };
     Plot.prototype.render = function () {
         var plot = (React.createElement(Typography_1.default, { variant: "h3", color: "inherit", style: { padding: '20px 0 0 20px' } }, "Load Some PDG Data to Get Started!"));
-        if (this.props.data) {
+        if (this.props.data && this.props.data.length > 0) {
             plot = (React.createElement("svg", { width: svgWidth, height: svgHeight },
                 React.createElement("g", { transform: "translate(" + margins1.left + "," + margins1.top + ")" },
                     React.createElement("g", { className: "axis axis--x", transform: "translate(" + 0 + "," + height + ")", ref: this.xAxis }),
@@ -257,8 +264,8 @@ var Plot = /** @class */ (function (_super) {
                         React.createElement("rect", { width: width, height: height }))),
                 React.createElement("rect", { className: "zoom", width: width, height: height, fill: "transparent", transform: "translate(" + margins1.left + "," + margins1.top + ")", ref: this.zoom }),
                 React.createElement("rect", { x: width - 100, y: 30, rx: "5px", width: 140, height: 40, stroke: "darkgray", fill: "white" }),
-                React.createElement("text", { x: width - 90, y: 40, dy: "0.32em", style: { fontWeight: 'bold' }, stroke: z(ids[0]) }, ids[0]),
-                React.createElement("text", { x: width - 90, y: 40 + 20, dy: "0.32em", style: { fontWeight: 'bold' }, stroke: z(ids[1]) }, ids[1])));
+                React.createElement("text", { x: width - 90, y: 40, dy: "0.32em", stroke: z(ids[0]) }, ids[0]),
+                React.createElement("text", { x: width - 90, y: 40 + 20, dy: "0.32em", stroke: z(ids[1]) }, ids[1])));
         }
         return plot;
     };
@@ -268,7 +275,7 @@ var mapStateToProps = function (state) { return ({
     data: state.plot.plotData,
 }); };
 var mapDispatchToProps = function (dispatch) { return ({
-    parsePlotData: function (text, hasHeader) { return dispatch(index_1.parsePlotData(text, hasHeader)); },
+    parsePlotData: function (text, config) { return dispatch(index_1.parsePlotData(text, config)); },
 }); };
 exports.default = styles_1.withStyles(styles)(react_redux_1.connect(mapStateToProps, mapDispatchToProps)(Plot));
 //# sourceMappingURL=Plot.js.map
